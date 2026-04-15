@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disaster Report System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="bg-orb orb-one"></div>
+    <div class="bg-orb orb-two"></div>
+    <div class="bg-grid"></div>
+
+    <main class="app-shell">
+        <section class="hero glass-card reveal hero-fullscreen">
+            <div class="hero-copy">
+                <div class="eyebrow">
+                    <i class="fa-solid fa-shield-heart"></i>
+                    <span>Disaster Report System</span>
+                </div>
+                <h1>Report faster. Understand sooner. Respond smarter.</h1>
+                <p class="hero-text">Submit an image, describe what happened, and let the backend combine vision and text models into one clear decision.</p>
+                <div class="hero-stats">
+                    <div class="stat-chip">
+                        <i class="fa-solid fa-camera"></i>
+                        <span>Image analysis</span>
+                    </div>
+                    <div class="stat-chip">
+                        <i class="fa-solid fa-pen-to-square"></i>
+                        <span>Text classification</span>
+                    </div>
+                    <div class="stat-chip">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>Priority output</span>
+                    </div>
+                </div>
+                <div class="hero-actions">
+                    <button type="button" class="btn btn-primary hero-cta" id="openFormBtn" aria-controls="reportWorkspace" onclick="(function(){const workspace=document.getElementById('reportWorkspace');if(workspace){workspace.classList.remove('is-hidden');workspace.classList.add('is-open');workspace.style.display='grid';workspace.setAttribute('aria-hidden','false');workspace.scrollIntoView({behavior:'smooth',block:'start'});}const input=document.getElementById('textDescription');if(input){input.focus({preventScroll:true});}})()">
+                        <i class="fa-solid fa-clipboard-list"></i>
+                        <span>Submit report</span>
+                    </button>
+                    <p class="hero-note">Open the report form to start a new incident submission.</p>
+                </div>
+            </div>
+            <div class="hero-panel">
+                <div class="hero-panel-top">
+                    <span class="live-dot"></span>
+                    <span>AI-assisted intake</span>
+                </div>
+                <div class="hero-visual">
+                    <img src="assets/disaster-signals.svg" alt="Illustration showing image and text signals combining into one disaster report">
+                </div>
+                <div class="hero-panel-main">
+                    <strong>One form.</strong>
+                    <span>Two signals.</span>
+                    <p>Image + text are fused into a single report for quick triage.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="workspace is-hidden" id="reportWorkspace">
+            <article class="glass-card form-card reveal">
+                <div class="section-title">
+                    <div class="section-badge"><i class="fa-solid fa-file-lines"></i></div>
+                    <div>
+                        <h2>Submit a report</h2>
+                        <p>Share the incident details and optional media.</p>
+                    </div>
+                </div>
+
+                <form id="reportForm" class="report-form">
+                    <div class="form-group">
+                        <label for="textDescription">
+                            <i class="fa-solid fa-pen-fancy"></i>
+                            <span>Describe the situation</span>
+                        </label>
+                        <textarea id="textDescription" placeholder="Example: Heavy flooding near my area, water entering houses..." rows="6"></textarea>
+                        <small>Give short but specific details about what is happening.</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="imageUpload">
+                            <i class="fa-solid fa-image"></i>
+                            <span>Upload image</span>
+                        </label>
+                        <div class="image-upload-area" id="imageUploadArea">
+                            <input type="file" id="imageUpload" accept="image/*" class="sr-only">
+                            <div class="upload-placeholder">
+                                <i class="fa-solid fa-cloud-arrow-up upload-icon"></i>
+                                <p>Click to upload or drag and drop</p>
+                                <small>PNG, JPG, WebP up to 10MB</small>
+                            </div>
+                            <div id="imagePreview" class="image-preview" style="display: none;">
+                                <img id="previewImg" src="" alt="Preview image">
+                                <button type="button" class="remove-image" aria-label="Remove image">
+                                    <i class="fa-solid fa-xmark"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="location">
+                                <i class="fa-solid fa-location-dot"></i>
+                                <span>Location</span>
+                            </label>
+                            <input type="text" id="location" placeholder="Downtown area, near river street">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="emergencyLevel">
+                                <i class="fa-solid fa-bolt"></i>
+                                <span>Emergency level</span>
+                            </label>
+                            <select id="emergencyLevel">
+                                <option value="">Select level</option>
+                                <option value="Low">Low</option>
+                                <option value="Medium">Medium</option>
+                                <option value="High">High</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="submit-btn" id="submitBtn">
+                        <span class="btn-label">
+                            <i class="fa-solid fa-paper-plane"></i>
+                            <span>Submit report</span>
+                        </span>
+                        <span class="spinner" style="display: none;">
+                            <i class="fa-solid fa-circle-notch"></i>
+                        </span>
+                    </button>
+                </form>
+            </article>
+
+            <article class="glass-card results-card reveal" id="resultsSection" style="display: none;">
+                <div class="section-title">
+                    <div class="section-badge accent"><i class="fa-solid fa-chart-line"></i></div>
+                    <div>
+                        <h2>AI analysis results</h2>
+                        <p>Image, text, and combined output in one view.</p>
+                    </div>
+                </div>
+
+                <div class="results-stack">
+                    <div class="result-card image-result">
+                        <div class="result-head">
+                            <div class="result-title">
+                                <i class="fa-solid fa-image"></i>
+                                <span>Image prediction</span>
+                            </div>
+                            <span class="result-pill">Vision</span>
+                        </div>
+                        <div class="result-content">
+                            <div class="result-item">
+                                <span class="label">Disaster type</span>
+                                <span id="imagePrediction" class="value">--</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="label">Confidence</span>
+                                <span id="imageConfidence" class="value">--</span>
+                            </div>
+                            <div id="imageConfidenceBar" class="confidence-bar" style="display: none;">
+                                <div class="confidence-fill"></div>
+                            </div>
+                            <div class="model-breakdown" id="modelBreakdown"></div>
+                        </div>
+                    </div>
+
+                    <div class="result-card text-result">
+                        <div class="result-head">
+                            <div class="result-title">
+                                <i class="fa-solid fa-file-signature"></i>
+                                <span>Text analysis</span>
+                            </div>
+                            <span class="result-pill neutral">NLP</span>
+                        </div>
+                        <div class="result-content">
+                            <div class="result-item stacked">
+                                <span class="label">Detected keywords</span>
+                                <div id="detectedKeywords" class="keywords-list"></div>
+                            </div>
+                            <div class="result-item">
+                                <span class="label">Classified as</span>
+                                <span id="textClassification" class="value">--</span>
+                            </div>
+                            <div class="result-item">
+                                <span class="label">Text confidence</span>
+                                <span id="textConfidence" class="value">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="result-card final-result">
+                        <div class="result-head">
+                            <div class="result-title">
+                                <i class="fa-solid fa-layer-group"></i>
+                                <span>Final combined result</span>
+                            </div>
+                            <span class="result-pill strong">Decision</span>
+                        </div>
+                        <div class="result-content">
+                            <div class="final-output" id="finalOutput"></div>
+                            <div class="result-item">
+                                <span class="label">Priority level</span>
+                                <span id="priorityLevel" class="priority-badge"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button type="button" class="btn btn-primary" id="newReportBtn">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        <span>New report</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary" id="downloadReportBtn">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Download report</span>
+                    </button>
+                </div>
+            </article>
+        </section>
+
+        <div id="errorMessage" class="error-message glass-card" style="display: none;"></div>
+
+        <footer class="footer">
+            <span>Powered by AI-assisted triage</span>
+        </footer>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

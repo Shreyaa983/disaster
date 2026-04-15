@@ -1,0 +1,51 @@
+<svg width="640" height="520" viewBox="0 0 640 520" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="g1" x1="92" y1="38" x2="552" y2="478" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7EE0FF" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#9AA6FF" stop-opacity="0.95"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="160" y1="120" x2="470" y2="420" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F4F7FB" stop-opacity="0.95"/>
+      <stop offset="1" stop-color="#CFE7FF" stop-opacity="0.9"/>
+    </linearGradient>
+    <linearGradient id="g3" x1="324" y1="162" x2="324" y2="464" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#47D18C"/>
+      <stop offset="1" stop-color="#1CA96B"/>
+    </linearGradient>
+    <filter id="blur" x="0" y="0" width="640" height="520" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="18"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="640" height="520" rx="36" fill="url(#g1)" fill-opacity="0.08"/>
+  <circle cx="122" cy="106" r="92" fill="#6EE7FF" fill-opacity="0.22" filter="url(#blur)"/>
+  <circle cx="518" cy="412" r="120" fill="#7C8CFF" fill-opacity="0.18" filter="url(#blur)"/>
+
+  <path d="M94 394C140 350 198 324 258 324C332 324 378 362 430 386C486 412 540 416 600 392V470H94V394Z" fill="url(#g2)" fill-opacity="0.65"/>
+  <path d="M94 414C146 378 201 356 258 356C322 356 380 392 430 408C486 426 540 426 600 402" stroke="#F4F7FB" stroke-opacity="0.28" stroke-width="4" stroke-linecap="round"/>
+
+  <rect x="264" y="158" width="112" height="172" rx="28" fill="#06111C" fill-opacity="0.78" stroke="#F4F7FB" stroke-opacity="0.18" stroke-width="3"/>
+  <rect x="284" y="186" width="72" height="20" rx="10" fill="#7EE0FF" fill-opacity="0.82"/>
+  <rect x="284" y="218" width="72" height="20" rx="10" fill="#9AA6FF" fill-opacity="0.82"/>
+  <rect x="284" y="250" width="48" height="20" rx="10" fill="#F3B84B" fill-opacity="0.82"/>
+  <rect x="284" y="282" width="72" height="20" rx="10" fill="#47D18C" fill-opacity="0.82"/>
+
+  <rect x="214" y="228" width="34" height="98" rx="17" fill="#F4F7FB" fill-opacity="0.9"/>
+  <rect x="392" y="228" width="34" height="98" rx="17" fill="#F4F7FB" fill-opacity="0.9"/>
+  <circle cx="231" cy="224" r="26" fill="#F4F7FB" fill-opacity="0.88"/>
+  <circle cx="409" cy="224" r="26" fill="#F4F7FB" fill-opacity="0.88"/>
+  <circle cx="231" cy="224" r="14" fill="#6EE7FF"/>
+  <circle cx="409" cy="224" r="14" fill="#7C8CFF"/>
+
+  <path d="M144 222C168 196 192 184 220 182" stroke="#F4F7FB" stroke-opacity="0.6" stroke-width="8" stroke-linecap="round"/>
+  <path d="M136 184C170 150 206 134 248 128" stroke="#F4F7FB" stroke-opacity="0.42" stroke-width="6" stroke-linecap="round"/>
+  <path d="M496 222C472 196 448 184 420 182" stroke="#F4F7FB" stroke-opacity="0.6" stroke-width="8" stroke-linecap="round"/>
+  <path d="M504 184C470 150 434 134 392 128" stroke="#F4F7FB" stroke-opacity="0.42" stroke-width="6" stroke-linecap="round"/>
+
+  <path d="M318 108L336 148H300L318 108Z" fill="url(#g3)"/>
+  <rect x="312" y="148" width="12" height="18" rx="6" fill="#F4F7FB"/>
+  <path d="M306 96L318 70L330 96" stroke="#F4F7FB" stroke-opacity="0.88" stroke-width="4" stroke-linecap="round"/>
+
+  <rect x="178" y="350" width="284" height="24" rx="12" fill="#06111C" fill-opacity="0.48"/>
+  <text x="320" y="368" text-anchor="middle" fill="#F4F7FB" fill-opacity="0.9" font-family="Inter, sans-serif" font-size="15" font-weight="600">Image + text signals fused into one decision</text>
+</svg>
