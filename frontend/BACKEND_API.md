@@ -21,7 +21,7 @@ This file documents the expected backend API structure that the frontend expects
 
 The backend now expects three text-classification assets in addition to the image models:
 
-- `Disaster_tfidf.pkl`
+- `text_model_rfidf.pkl`
 - `Vectorizer_tfidf.pkl`
 - `Text_claseses.pkl`
 

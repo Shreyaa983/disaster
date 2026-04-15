@@ -21,15 +21,15 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 TEXT_MODEL_PATH = os.environ.get(
     "TEXT_MODEL_PATH",
-    os.path.join("models", "Disaster_tfidf.pkl"),
+    os.path.join("models", "text_model_tfidf.pkl"),
 )
 TEXT_VECTORIZER_PATH = os.environ.get(
     "TEXT_VECTORIZER_PATH",
-    os.path.join("models", "Vectorizer_tfidf.pkl"),
+    os.path.join("models", "vectorizer_tfidf.pkl"),
 )
 TEXT_CLASSES_PATH = os.environ.get(
     "TEXT_CLASSES_PATH",
-    os.path.join("models", "Text_claseses.pkl"),
+    os.path.join("models", "text_classes.pkl"),
 )
 
 transform = transforms.Compose([
@@ -44,6 +44,13 @@ DISASTER_KEYWORDS = {
     "Flood": ["flood", "water", "inundation", "overflow", "rain", "wet", "submerged", "drown", "swamp"],
     "Normal": ["normal", "clear", "safe", "good", "fine", "ok", "okay", "nothing", "all"],
 }
+
+
+def resolve_existing_path(*candidate_paths):
+    for candidate_path in candidate_paths:
+        if candidate_path and os.path.exists(candidate_path):
+            return candidate_path
+    return candidate_paths[0] if candidate_paths else None
 
 
 def load_cnn_model():
@@ -80,12 +87,25 @@ def load_resnet_model():
 
 
 def load_text_assets():
-    if not os.path.exists(TEXT_MODEL_PATH):
-        raise FileNotFoundError(f"Text model file not found at {TEXT_MODEL_PATH}")
-    if not os.path.exists(TEXT_VECTORIZER_PATH):
-        raise FileNotFoundError(f"Text vectorizer file not found at {TEXT_VECTORIZER_PATH}")
-    if not os.path.exists(TEXT_CLASSES_PATH):
-        raise FileNotFoundError(f"Text classes file not found at {TEXT_CLASSES_PATH}")
+    text_model_path = resolve_existing_path(
+        TEXT_MODEL_PATH,
+        os.path.join("models", "text_model_tfidf.pkl"),
+        os.path.join("models", "Disaster_tfidf.pkl"),
+        os.path.join("models", "etxt_tfidf.pkl"),
+    )
+    text_vectorizer_path = resolve_existing_path(
+        TEXT_VECTORIZER_PATH,
+        os.path.join("models", "vectorizer_tfidf.pkl"),
+    )
+    text_classes_path = resolve_existing_path(
+        TEXT_CLASSES_PATH,
+        os.path.join("models", "text_classes.pkl"),
+    )
+
+    if not os.path.exists(text_model_path):
+        raise FileNotFoundError(f"Text model file not found at {text_model_path}")
+    if not os.path.exists(text_vectorizer_path):
+        raise FileNotFoundError(f"Text vectorizer file not found at {text_vectorizer_path}")
 
     def load_serialized_object(file_path):
         try:
@@ -94,9 +114,12 @@ def load_text_assets():
             with open(file_path, "rb") as file_handle:
                 return pickle.load(file_handle)
 
-    text_model = load_serialized_object(TEXT_MODEL_PATH)
-    text_vectorizer = load_serialized_object(TEXT_VECTORIZER_PATH)
-    loaded_classes = load_serialized_object(TEXT_CLASSES_PATH)
+    text_model = load_serialized_object(text_model_path)
+    text_vectorizer = load_serialized_object(text_vectorizer_path)
+
+    loaded_classes = None
+    if text_classes_path and os.path.exists(text_classes_path):
+        loaded_classes = load_serialized_object(text_classes_path)
 
     if hasattr(loaded_classes, "classes_"):
         text_classes = list(loaded_classes.classes_)
@@ -104,10 +127,12 @@ def load_text_assets():
         text_classes = list(loaded_classes["classes"])
     elif isinstance(loaded_classes, (list, tuple)):
         text_classes = list(loaded_classes)
+    elif hasattr(text_model, "classes_"):
+        text_classes = list(text_model.classes_)
     else:
         text_classes = CLASSES
 
-    return text_model, text_vectorizer, text_classes
+    return text_model, text_vectorizer, text_classes, text_model_path
 
 
 def get_estimator_feature_count(estimator):
@@ -141,25 +166,27 @@ def extract_keywords(text):
 
 
 def classify_text_with_tfidf(text):
-    if not text_model_compatible:
-        return classify_text_fallback(text)
+    if text_model is None or text_vectorizer is None:
+        label, confidence = classify_text_fallback(text)
+        return label, confidence, "keyword_fallback"
 
     try:
         features = text_vectorizer.transform([text])
 
+        predicted_class = text_model.predict(features)[0]
+
         if hasattr(text_model, "predict_proba"):
             probabilities = text_model.predict_proba(features)[0]
-            predicted_index = int(probabilities.argmax())
-            confidence = float(probabilities[predicted_index])
+            predicted_class_index = list(text_model.classes_).index(predicted_class)
+            confidence = float(probabilities[predicted_class_index])
         else:
-            predicted_index = int(text_model.predict(features)[0])
             confidence = 1.0
 
-        predicted_class = text_classes[predicted_index] if predicted_index < len(text_classes) else CLASSES[predicted_index]
-        return predicted_class, confidence
+        return str(predicted_class), confidence, "tfidf"
     except Exception as error:
-        print(f"⚠️ Text model inference failed, using fallback keywords: {error}")
-        return classify_text_fallback(text)
+        print(f"⚠️ Text model inference failed, using keyword fallback: {error}")
+        label, confidence = classify_text_fallback(text)
+        return label, confidence, "keyword_fallback"
 
 
 def classify_text_fallback(text):
@@ -228,12 +255,13 @@ except Exception as error:
     print(f"❌ Error loading ResNet model: {error}")
 
 try:
-    text_model, text_vectorizer, text_classes = load_text_assets()
-    print(f"✅ Text model loaded from {TEXT_MODEL_PATH}")
+    text_model, text_vectorizer, text_classes, resolved_text_model_path = load_text_assets()
+    print(f"✅ Text model loaded from {resolved_text_model_path}")
 except Exception as error:
     text_model = None
     text_vectorizer = None
     text_classes = CLASSES
+    resolved_text_model_path = TEXT_MODEL_PATH
     print(f"❌ Error loading text model assets: {error}")
 
 text_model_expected_features = get_estimator_feature_count(text_model)
@@ -250,7 +278,7 @@ if text_model is not None and text_vectorizer is not None and not text_model_com
     print(
         "⚠️ Text model/vectorizer feature mismatch: "
         f"model expects {text_model_expected_features}, vectorizer produces {text_vectorizer_features}. "
-        "Falling back to keyword-based text classification."
+        "The endpoint will still try TF-IDF inference first and only fall back if inference fails."
     )
 
 
@@ -278,7 +306,7 @@ def predict():
             image_prediction, image_confidence, model_details = ensemble_predict(image_tensor)
 
         text_keywords = extract_keywords(text)
-        text_classification, text_confidence = classify_text_with_tfidf(text)
+        text_classification, text_confidence, text_analysis_source = classify_text_with_tfidf(text)
         final_decision = combine_predictions(image_prediction, image_confidence, text_classification)
         priority_level = determine_priority(final_decision, emergency_level, image_confidence)
 
@@ -288,10 +316,12 @@ def predict():
             "text_keywords": text_keywords,
             "text_classification": text_classification,
             "text_confidence": float(text_confidence),
+            "text_analysis_source": text_analysis_source,
             "final_decision": final_decision,
             "priority_level": priority_level,
             "location": location,
             "text_model_loaded": text_model is not None,
+            "text_model_path": resolved_text_model_path,
             "text_model_compatible": text_model_compatible,
             "text_model_expected_features": text_model_expected_features,
             "text_vectorizer_features": text_vectorizer_features,

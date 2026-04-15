@@ -23,6 +23,7 @@ class DisasterReportSystem {
         this.newReportBtn = document.getElementById('newReportBtn');
         this.downloadReportBtn = document.getElementById('downloadReportBtn');
         this.modelBreakdown = document.getElementById('modelBreakdown');
+        this.textSourcePill = document.getElementById('textSourcePill');
         this.openFormBtn = document.getElementById('openFormBtn');
         this.reportWorkspace = document.getElementById('reportWorkspace');
     }
@@ -189,6 +190,7 @@ class DisasterReportSystem {
         const textKeywords = result.text_keywords || [];
         const textClassification = result.text_classification || 'Unknown';
         const textConfidence = result.text_confidence || 0;
+        const textSource = result.text_analysis_source || 'unknown';
         const finalDecision = result.final_decision || 'Unable to determine';
         const priority = result.priority_level || 'Medium';
         const ensemble = result.model_ensemble || {};
@@ -207,6 +209,7 @@ class DisasterReportSystem {
         this.displayKeywords(textKeywords);
         document.getElementById('textClassification').textContent = textClassification;
         document.getElementById('textConfidence').textContent = `${(textConfidence * 100).toFixed(2)}%`;
+        this.updateTextSourcePill(textSource);
 
         // Model breakdown
         this.displayModelBreakdown(ensemble);
@@ -237,6 +240,29 @@ class DisasterReportSystem {
             tag.textContent = keyword;
             keywordsList.appendChild(tag);
         });
+    }
+
+    updateTextSourcePill(source) {
+        if (!this.textSourcePill) {
+            return;
+        }
+
+        const normalizedSource = String(source || '').toLowerCase();
+
+        if (normalizedSource === 'tfidf') {
+            this.textSourcePill.textContent = 'TF-IDF';
+            this.textSourcePill.className = 'result-pill';
+            return;
+        }
+
+        if (normalizedSource === 'keyword_fallback') {
+            this.textSourcePill.textContent = 'Fallback';
+            this.textSourcePill.className = 'result-pill neutral';
+            return;
+        }
+
+        this.textSourcePill.textContent = source || 'Unknown';
+        this.textSourcePill.className = 'result-pill neutral';
     }
 
     displayModelBreakdown(ensemble) {
@@ -331,6 +357,7 @@ class DisasterReportSystem {
             textResults: {
                 keywords: Array.from(document.querySelectorAll('.keyword-tag')).map(tag => tag.textContent),
                 classification: document.getElementById('textClassification').textContent,
+                source: this.textSourcePill ? this.textSourcePill.textContent : 'Unknown',
             },
             finalDecision: document.getElementById('finalOutput').textContent,
             priorityLevel: document.getElementById('priorityLevel').textContent,
