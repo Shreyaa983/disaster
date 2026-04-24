@@ -19,17 +19,17 @@ CORS(app)
 CLASSES = ["Earthquake", "Fire", "Flood", "Normal"]
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-TEXT_MODEL_PATH = os.environ.get(
-    "TEXT_MODEL_PATH",
-    os.path.join("models", "text_model_tfidf.pkl"),
+TEXT_LOGISTIC_MODEL_PATH = os.environ.get(
+    "TEXT_LOGISTIC_MODEL_PATH",
+    os.environ.get("TEXT_MODEL_PATH", os.path.join("models", "text_logistic_model.pkl")),
 )
 TEXT_VECTORIZER_PATH = os.environ.get(
     "TEXT_VECTORIZER_PATH",
-    os.path.join("models", "vectorizer_tfidf.pkl"),
+    os.path.join("models", "text_vectorizer.pkl"),
 )
-TEXT_CLASSES_PATH = os.environ.get(
-    "TEXT_CLASSES_PATH",
-    os.path.join("models", "text_classes.pkl"),
+TEXT_METRICS_PATH = os.environ.get(
+    "TEXT_METRICS_PATH",
+    os.path.join("models", "text_model_metrics.pkl"),
 )
 
 transform = transforms.Compose([
@@ -87,25 +87,25 @@ def load_resnet_model():
 
 
 def load_text_assets():
-    text_model_path = resolve_existing_path(
-        TEXT_MODEL_PATH,
-        os.path.join("models", "text_model_tfidf.pkl"),
-        os.path.join("models", "Disaster_tfidf.pkl"),
-        os.path.join("models", "etxt_tfidf.pkl"),
-    )
     text_vectorizer_path = resolve_existing_path(
         TEXT_VECTORIZER_PATH,
+        os.path.join("models", "text_vectorizer.pkl"),
         os.path.join("models", "vectorizer_tfidf.pkl"),
     )
-    text_classes_path = resolve_existing_path(
-        TEXT_CLASSES_PATH,
-        os.path.join("models", "text_classes.pkl"),
+    text_logistic_model_path = resolve_existing_path(
+        TEXT_LOGISTIC_MODEL_PATH,
+        os.path.join("models", "text_logistic_model.pkl"),
+        os.path.join("models", "text_model_tfidf.pkl"),
+    )
+    text_metrics_path = resolve_existing_path(
+        TEXT_METRICS_PATH,
+        os.path.join("models", "text_model_metrics.pkl"),
     )
 
-    if not os.path.exists(text_model_path):
-        raise FileNotFoundError(f"Text model file not found at {text_model_path}")
     if not os.path.exists(text_vectorizer_path):
         raise FileNotFoundError(f"Text vectorizer file not found at {text_vectorizer_path}")
+    if not os.path.exists(text_logistic_model_path):
+        raise FileNotFoundError(f"Text logistic model file not found at {text_logistic_model_path}")
 
     def load_serialized_object(file_path):
         try:
@@ -114,94 +114,56 @@ def load_text_assets():
             with open(file_path, "rb") as file_handle:
                 return pickle.load(file_handle)
 
-    text_model = load_serialized_object(text_model_path)
     text_vectorizer = load_serialized_object(text_vectorizer_path)
+    text_logistic_model = load_serialized_object(text_logistic_model_path)
 
-    loaded_classes = None
-    if text_classes_path and os.path.exists(text_classes_path):
-        loaded_classes = load_serialized_object(text_classes_path)
+    loaded_metrics = {}
+    if text_metrics_path and os.path.exists(text_metrics_path):
+        loaded_metrics = load_serialized_object(text_metrics_path)
 
-    if hasattr(loaded_classes, "classes_"):
-        text_classes = list(loaded_classes.classes_)
-    elif isinstance(loaded_classes, dict) and "classes" in loaded_classes:
-        text_classes = list(loaded_classes["classes"])
-    elif isinstance(loaded_classes, (list, tuple)):
-        text_classes = list(loaded_classes)
-    elif hasattr(text_model, "classes_"):
-        text_classes = list(text_model.classes_)
+    return {
+        "vectorizer": text_vectorizer,
+        "logistic_model": text_logistic_model,
+        "metrics": loaded_metrics,
+        "paths": {
+            "vectorizer": text_vectorizer_path,
+            "logistic_model": text_logistic_model_path,
+            "metrics": text_metrics_path,
+        },
+    }
+
+
+def normalize_text_label(label):
+    return str(label).strip().title()
+
+
+def classify_with_logistic_model(features, model):
+    predicted_class = model.predict(features)[0]
+    if hasattr(model, "predict_proba"):
+        probabilities = model.predict_proba(features)[0]
+        predicted_class_index = list(model.classes_).index(predicted_class)
+        confidence = float(probabilities[predicted_class_index])
     else:
-        text_classes = CLASSES
-
-    return text_model, text_vectorizer, text_classes, text_model_path
-
-
-def get_estimator_feature_count(estimator):
-    if estimator is None:
-        return None
-    if hasattr(estimator, "n_features_in_"):
-        return int(estimator.n_features_in_)
-    if hasattr(estimator, "coef_"):
-        return int(estimator.coef_.shape[1])
-    return None
-
-
-def get_vectorizer_feature_count(vectorizer):
-    if vectorizer is None:
-        return None
-    if hasattr(vectorizer, "vocabulary_"):
-        return len(vectorizer.vocabulary_)
-    if hasattr(vectorizer, "get_feature_names_out"):
-        return len(vectorizer.get_feature_names_out())
-    return None
-
-
-def extract_keywords(text):
-    text_lower = text.lower()
-    found = set()
-    for keywords in DISASTER_KEYWORDS.values():
-        for keyword in keywords:
-            if keyword in text_lower:
-                found.add(keyword)
-    return list(found)
+        confidence = 1.0
+    return normalize_text_label(predicted_class), confidence
 
 
 def classify_text_with_tfidf(text):
-    if text_model is None or text_vectorizer is None:
-        label, confidence = classify_text_fallback(text)
-        return label, confidence, "keyword_fallback"
+    if text_vectorizer is None or text_logistic_model is None:
+        raise RuntimeError("Text vectorizer and logistic model must be loaded")
 
-    try:
-        features = text_vectorizer.transform([text])
-
-        predicted_class = text_model.predict(features)[0]
-
-        if hasattr(text_model, "predict_proba"):
-            probabilities = text_model.predict_proba(features)[0]
-            predicted_class_index = list(text_model.classes_).index(predicted_class)
-            confidence = float(probabilities[predicted_class_index])
-        else:
-            confidence = 1.0
-
-        return str(predicted_class), confidence, "tfidf"
-    except Exception as error:
-        print(f"⚠️ Text model inference failed, using keyword fallback: {error}")
-        label, confidence = classify_text_fallback(text)
-        return label, confidence, "keyword_fallback"
-
-
-def classify_text_fallback(text):
-    text_lower = text.lower()
-    scores = {
-        category: sum(1 for keyword in keywords if keyword in text_lower)
-        for category, keywords in DISASTER_KEYWORDS.items()
+    features = text_vectorizer.transform([text]).toarray()
+    label, confidence = classify_with_logistic_model(features, text_logistic_model)
+    candidates = {
+        "logistic_regression": {
+            "label": label,
+            "confidence": confidence,
+        }
     }
-    best_category = max(scores, key=scores.get)
-    if scores[best_category] == 0:
-        return "Unknown", 0.0
-    return best_category, float(scores[best_category]) / 5.0
+    return label, confidence, "logistic_regression", candidates
 
 
-def ensemble_predict(image_tensor, cnn_weight=0.35, resnet_weight=0.65):
+def ensemble_predict(image_tensor, cnn_weight=0.65, resnet_weight=0.35):
     with torch.no_grad():
         cnn_probs = torch.softmax(cnn_model(image_tensor), dim=1)
         resnet_probs = torch.softmax(resnet_model(image_tensor), dim=1)
@@ -242,44 +204,41 @@ def determine_priority(decision, user_level, image_conf=0):
 
 try:
     cnn_model = load_cnn_model()
-    print(f"✅ CNN model loaded on {device}")
+    print(f"CNN model loaded on {device}")
 except Exception as error:
     cnn_model = None
-    print(f"❌ Error loading CNN model: {error}")
+    print(f"Error loading CNN model: {error}")
 
 try:
     resnet_model = load_resnet_model()
-    print(f"✅ ResNet model loaded on {device}")
+    print(f"ResNet model loaded on {device}")
 except Exception as error:
     resnet_model = None
-    print(f"❌ Error loading ResNet model: {error}")
+    print(f"Error loading ResNet model: {error}")
 
 try:
-    text_model, text_vectorizer, text_classes, resolved_text_model_path = load_text_assets()
-    print(f"✅ Text model loaded from {resolved_text_model_path}")
-except Exception as error:
-    text_model = None
-    text_vectorizer = None
-    text_classes = CLASSES
-    resolved_text_model_path = TEXT_MODEL_PATH
-    print(f"❌ Error loading text model assets: {error}")
-
-text_model_expected_features = get_estimator_feature_count(text_model)
-text_vectorizer_features = get_vectorizer_feature_count(text_vectorizer)
-text_model_compatible = (
-    text_model is not None
-    and text_vectorizer is not None
-    and text_model_expected_features is not None
-    and text_vectorizer_features is not None
-    and text_model_expected_features == text_vectorizer_features
-)
-
-if text_model is not None and text_vectorizer is not None and not text_model_compatible:
+    text_assets = load_text_assets()
+    text_vectorizer = text_assets["vectorizer"]
+    text_logistic_model = text_assets["logistic_model"]
+    text_metrics = text_assets["metrics"]
+    text_model_paths = text_assets["paths"]
     print(
-        "⚠️ Text model/vectorizer feature mismatch: "
-        f"model expects {text_model_expected_features}, vectorizer produces {text_vectorizer_features}. "
-        "The endpoint will still try TF-IDF inference first and only fall back if inference fails."
+        "Text assets loaded: "
+        f"vectorizer={text_model_paths['vectorizer']}, "
+        f"logistic={text_model_paths['logistic_model']}"
     )
+except Exception as error:
+    text_vectorizer = None
+    text_logistic_model = None
+    text_metrics = {}
+    text_model_paths = {
+        "vectorizer": TEXT_VECTORIZER_PATH,
+        "logistic_model": TEXT_LOGISTIC_MODEL_PATH,
+        "metrics": TEXT_METRICS_PATH,
+    }
+    print(f"Error loading text model assets: {error}")
+
+text_model_loaded = text_vectorizer is not None and text_logistic_model is not None
 
 
 @app.route("/predict", methods=["POST"])
@@ -305,34 +264,32 @@ def predict():
             image_tensor = transform(image).unsqueeze(0).to(device)
             image_prediction, image_confidence, model_details = ensemble_predict(image_tensor)
 
-        text_keywords = extract_keywords(text)
-        text_classification, text_confidence, text_analysis_source = classify_text_with_tfidf(text)
+        text_classification, text_confidence, text_analysis_source, text_model_candidates = classify_text_with_tfidf(text)
         final_decision = combine_predictions(image_prediction, image_confidence, text_classification)
         priority_level = determine_priority(final_decision, emergency_level, image_confidence)
 
         response = {
             "image_prediction": image_prediction,
             "image_confidence": float(image_confidence),
-            "text_keywords": text_keywords,
+            "text_keywords": [],
             "text_classification": text_classification,
             "text_confidence": float(text_confidence),
             "text_analysis_source": text_analysis_source,
+            "text_model_candidates": text_model_candidates,
             "final_decision": final_decision,
             "priority_level": priority_level,
             "location": location,
-            "text_model_loaded": text_model is not None,
-            "text_model_path": resolved_text_model_path,
-            "text_model_compatible": text_model_compatible,
-            "text_model_expected_features": text_model_expected_features,
-            "text_vectorizer_features": text_vectorizer_features,
+            "text_model_loaded": text_model_loaded,
+            "text_model_paths": text_model_paths,
+            "text_model_metrics": text_metrics,
             "model_ensemble": model_details,
             "message": "Report processed successfully",
         }
 
-        print(f"✅ Prediction: {final_decision} | Priority: {priority_level}")
+        print(f"Prediction: {final_decision} | Priority: {priority_level}")
         return jsonify(response), 200
     except Exception as error:
-        print(f"❌ Error in predict endpoint: {error}")
+        print(f"Error in predict endpoint: {error}")
         return jsonify({"error": f"Server error: {str(error)}"}), 500
 
 
@@ -343,7 +300,8 @@ def health():
         "device": str(device),
         "cnn_loaded": cnn_model is not None,
         "resnet_loaded": resnet_model is not None,
-        "text_model_loaded": text_model is not None,
+        "text_model_loaded": text_model_loaded,
+        "text_model_metrics": text_metrics,
     }), 200
 
 
@@ -370,24 +328,24 @@ def internal_error(error):
 
 
 if __name__ == "__main__":
-    if cnn_model is None or resnet_model is None or text_model is None or text_vectorizer is None:
-        print("❌ Failed to load one or more models. Cannot start server.")
-        print(f"   CNN Model: {'✅ Loaded' if cnn_model else '❌ Failed'}")
-        print(f"   ResNet Model: {'✅ Loaded' if resnet_model else '❌ Failed'}")
-        print(f"   Text Model: {'✅ Loaded' if text_model else '❌ Failed'}")
-        print(f"   Text Vectorizer: {'✅ Loaded' if text_vectorizer else '❌ Failed'}")
+    if cnn_model is None or resnet_model is None or not text_model_loaded:
+        print("Failed to load one or more models. Cannot start server.")
+        print(f"   CNN Model: {'Loaded' if cnn_model else 'Failed'}")
+        print(f"   ResNet Model: {'Loaded' if resnet_model else 'Failed'}")
+        print(f"   Text Vectorizer: {'Loaded' if text_vectorizer else 'Failed'}")
+        print(f"   Logistic Text Model: {'Loaded' if text_logistic_model else 'Failed'}")
         raise SystemExit(1)
 
     print("\n" + "=" * 50)
-    print("🚨 Disaster Report System - Backend API")
+    print("Disaster Report System - Backend API")
     print("=" * 50)
-    print("📍 Server running on: http://localhost:5000")
-    print(f"🔧 Device: {device}")
-    print(f"📦 Classes: {', '.join(CLASSES)}")
-    print("🤖 Models: CNN + ResNet18 (Ensemble)")
-    print("⚖️  Weights: 35% CNN + 65% ResNet18")
-    print(f"📝 Text model: {TEXT_MODEL_PATH}")
-    print(f"🧠 Vectorizer: {TEXT_VECTORIZER_PATH}")
+    print("Server running on: http://localhost:5000")
+    print(f"Device: {device}")
+    print(f"Classes: {', '.join(CLASSES)}")
+    print("Models: CNN + ResNet18 (Ensemble)")
+    print("Weights: 65% CNN + 35% ResNet18")
+    print(f"Logistic text model: {text_model_paths['logistic_model']}")
+    print(f"Text vectorizer: {text_model_paths['vectorizer']}")
     print("=" * 50 + "\n")
 
     app.run(debug=True, host="localhost", port=5000, use_reloader=False)

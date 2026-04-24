@@ -24,6 +24,7 @@ class DisasterReportSystem {
         this.downloadReportBtn = document.getElementById('downloadReportBtn');
         this.modelBreakdown = document.getElementById('modelBreakdown');
         this.textSourcePill = document.getElementById('textSourcePill');
+        this.textModelAccuracy = document.getElementById('textModelAccuracy');
         this.openFormBtn = document.getElementById('openFormBtn');
         this.reportWorkspace = document.getElementById('reportWorkspace');
     }
@@ -191,6 +192,7 @@ class DisasterReportSystem {
         const textClassification = result.text_classification || 'Unknown';
         const textConfidence = result.text_confidence || 0;
         const textSource = result.text_analysis_source || 'unknown';
+        const textModelMetrics = result.text_model_metrics || {};
         const finalDecision = result.final_decision || 'Unable to determine';
         const priority = result.priority_level || 'Medium';
         const ensemble = result.model_ensemble || {};
@@ -210,6 +212,7 @@ class DisasterReportSystem {
         document.getElementById('textClassification').textContent = textClassification;
         document.getElementById('textConfidence').textContent = `${(textConfidence * 100).toFixed(2)}%`;
         this.updateTextSourcePill(textSource);
+        this.displayTextModelAccuracy(textModelMetrics);
 
         // Model breakdown
         this.displayModelBreakdown(ensemble);
@@ -242,6 +245,27 @@ class DisasterReportSystem {
         });
     }
 
+    displayTextModelAccuracy(metrics) {
+        if (!this.textModelAccuracy) {
+            return;
+        }
+
+        this.textModelAccuracy.innerHTML = '';
+
+        const logisticAccuracy = Number(metrics.logistic_accuracy);
+
+        if (Number.isFinite(logisticAccuracy)) {
+            const tag = document.createElement('span');
+            tag.className = 'keyword-tag';
+            tag.textContent = `LogReg ${ (logisticAccuracy * 100).toFixed(1) }%`;
+            this.textModelAccuracy.appendChild(tag);
+        }
+
+        if (!this.textModelAccuracy.childElementCount) {
+            this.textModelAccuracy.innerHTML = '<span>Metrics unavailable</span>';
+        }
+    }
+
     updateTextSourcePill(source) {
         if (!this.textSourcePill) {
             return;
@@ -249,15 +273,9 @@ class DisasterReportSystem {
 
         const normalizedSource = String(source || '').toLowerCase();
 
-        if (normalizedSource === 'tfidf') {
-            this.textSourcePill.textContent = 'TF-IDF';
+        if (normalizedSource === 'logistic_regression') {
+            this.textSourcePill.textContent = 'LogReg + TF-IDF';
             this.textSourcePill.className = 'result-pill';
-            return;
-        }
-
-        if (normalizedSource === 'keyword_fallback') {
-            this.textSourcePill.textContent = 'Fallback';
-            this.textSourcePill.className = 'result-pill neutral';
             return;
         }
 
