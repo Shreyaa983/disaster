@@ -11,6 +11,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+# from disaster import model
 from image_transfer_utils import (
     build_image_datasets,
     build_resnet18_model,
@@ -79,6 +80,21 @@ def main() -> None:
         freeze_base=args.freeze_base,
     )
     model = model.to(device)
+
+    if args.freeze_base:
+        for name, param in model.named_parameters():
+            # Freeze everything except classifier layers
+            if "classifier" in name:
+                param.requires_grad = True
+            else:
+                param.requires_grad = False
+
+    # ✅ Now calculate
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    total_params = sum(p.numel() for p in model.parameters())
+
+    print(f"Actual Trainable Parameters: {trainable_params:,}")
+    print(f"Total Parameters: {total_params:,}")
 
     class_weights = compute_class_weights(train_for_split, train_indices, device)
     criterion = nn.CrossEntropyLoss(weight=class_weights)

@@ -125,10 +125,7 @@ def build_vgg16_model(num_classes: int, pretrained: bool = True, freeze_base: bo
 
     classifier_input = model.classifier[0].in_features
     model.classifier = nn.Sequential(
-        nn.Linear(classifier_input, 4096),
-        nn.ReLU(inplace=True),
-        nn.Dropout(0.5),
-        nn.Linear(4096, 512),
+        nn.Linear(classifier_input, 512),
         nn.ReLU(inplace=True),
         nn.Dropout(0.5),
         nn.Linear(512, num_classes),
